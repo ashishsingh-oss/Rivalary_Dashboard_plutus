@@ -12,6 +12,7 @@ Optional env vars:
 
 import os
 import json
+import ssl
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -22,9 +23,16 @@ DEFAULT_TARGET = (
     "?api_key=C1lOpwRYYaDDmZP9INwKEVcErtMdnxG2ey7fwkGY"
 )
 
-# Build an opener that ignores system proxy env vars.
-# This avoids tunnel/proxy 403 errors on some networks.
-NO_PROXY_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+def build_no_proxy_opener() -> urllib.request.OpenerDirector:
+    """
+    Build an opener that ignores system proxy env vars.
+    Optionally disables SSL verification only when ALLOW_INSECURE_SSL=1.
+    """
+    handlers = [urllib.request.ProxyHandler({})]
+    if os.getenv("ALLOW_INSECURE_SSL", "").strip() == "1":
+        insecure_ctx = ssl._create_unverified_context()
+        handlers.append(urllib.request.HTTPSHandler(context=insecure_ctx))
+    return urllib.request.build_opener(*handlers)
 
 
 def with_cache_bust(url: str) -> str:
@@ -78,7 +86,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     "Accept": "text/csv,text/plain,*/*",
                 },
             )
-            with NO_PROXY_OPENER.open(req, timeout=30) as res:
+            opener = build_no_proxy_opener()
+            with opener.open(req, timeout=30) as res:
                 body = res.read()
                 content_type = res.headers.get("Content-Type", "text/csv; charset=utf-8")
         except urllib.error.HTTPError as e:

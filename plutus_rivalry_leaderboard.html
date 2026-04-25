@@ -150,6 +150,7 @@ h1{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:4px;backgro
 const SHEET_CSV_URLS = [
   "https://data.testbook.com/api/queries/18368/results.csv?api_key=C1lOpwRYYaDDmZP9INwKEVcErtMdnxG2ey7fwkGY",
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vSyuEpf7ovIFnpH63zdTQXrwFv8wr8joti08T-zs6JKM4LyPKtg5O-tNSTJBgIt54qWVpwZhr5niux_/pub?gid=1310654021&single=true&output=csv",
+  "http://localhost:8000/sheet.csv",
 ];
 const VC_CSV_URLS = [
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vSXpop2sh1CxlWlMug0G3In2zOMGHMO4VwHUGKhdY4vGvT8sxPwfYf_v1lyNvPGSJtzVAil_69P-LJJ/pub?gid=0&single=true&output=csv",
@@ -340,13 +341,46 @@ async function fetchCsvTextFromSources(urls) {
   throw lastError || new Error("No CSV source available");
 }
 
+function orderedRevenueSources() {
+  // In local development, prefer proxy first to avoid browser CORS/fallback issues.
+  const localProxy = "http://localhost:8000/sheet.csv";
+  const isLocal = typeof window !== "undefined" && /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+  if (!isLocal) return SHEET_CSV_URLS.slice();
+  const rest = SHEET_CSV_URLS.filter(u => u !== localProxy);
+  return [localProxy, ...rest];
+}
+
 // ============================================================
 // DATA FETCHING
 // ============================================================
 function parseCSV(text) {
-  const lines = text.trim().split("\n");
+  const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
-  const rawHeaders = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/\s+/g,"_"));
+  const splitCsvLine = (line) => {
+    const out = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          cur += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === "," && !inQuotes) {
+        out.push(cur);
+        cur = "";
+      } else {
+        cur += ch;
+      }
+    }
+    out.push(cur);
+    return out.map(v => v.trim());
+  };
+
+  const rawHeaders = splitCsvLine(lines[0]).map(h => h.trim().toLowerCase().replace(/\s+/g,"_"));
   const seen = {};
   const headers = rawHeaders.map(h => {
     const key = h || "col";
@@ -354,7 +388,7 @@ function parseCSV(text) {
     return seen[key] === 1 ? key : `${key}_${seen[key]}`;
   });
   return lines.slice(1).map(line => {
-    const vals = line.split(",").map(v => v.trim());
+    const vals = splitCsvLine(line);
     const obj = {};
     headers.forEach((h, i) => obj[h] = vals[i] || "");
     return obj;
@@ -388,13 +422,24 @@ async function fetchData() {
       revenueSource = (payload.sources && payload.sources.revenue) || "netlify-env";
       vcSource = (payload.sources && payload.sources.vc) || "netlify-env";
     } catch (e) {
-      // Local/dev fallback path: direct browser fetch of public CSV URLs.
-      const revenueRes = await fetchCsvTextFromSources(SHEET_CSV_URLS);
+      // Ignore and fallback per-source below.
+    }
+
+    // Fetch each source independently so VC failures never block revenue updates.
+    if (!revenueText) {
+      const revenueRes = await fetchCsvTextFromSources(orderedRevenueSources());
       revenueText = revenueRes.text;
       revenueSource = revenueRes.source;
-      const vcRes = await fetchCsvTextFromSources(VC_CSV_URLS);
-      vcText = vcRes.text;
-      vcSource = vcRes.source;
+    }
+    if (!vcText) {
+      try {
+        const vcRes = await fetchCsvTextFromSources(VC_CSV_URLS);
+        vcText = vcRes.text;
+        vcSource = vcRes.source;
+      } catch (e) {
+        vcText = "";
+        vcSource = "unavailable";
+      }
     }
 
     const revenueRows = parseCSV(revenueText);
@@ -403,8 +448,8 @@ async function fetchData() {
       revenueImported = processWeeklyRows(revenueRows);
     }
 
-    const vcRows = parseCSV(vcText);
-    const vcImported = processVCRows(vcRows);
+    const vcRows = vcText ? parseCSV(vcText) : [];
+    const vcImported = vcRows.length > 0 ? processVCRows(vcRows) : 0;
 
     dataWarning = `Revenue rows: ${revenueImported} · VC rows: ${vcImported} · Rev source: ${revenueSource} · VC source: ${vcSource}`;
     lastRefresh = new Date();
@@ -559,14 +604,6 @@ function render() {
       Plutus Sales Floor © 2026
     </div>
   `;
-  if (dataWarning) {
-    html += `
-      <div class="error-box">
-        <h3>Data warning</h3>
-        <p>${dataWarning}</p>
-      </div>
-    `;
-  }
 
   app.innerHTML = html;
 }
