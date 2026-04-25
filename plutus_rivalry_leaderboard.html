@@ -150,11 +150,11 @@ h1{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:4px;backgro
 const SHEET_CSV_URLS = [
   "https://data.testbook.com/api/queries/18368/results.csv?api_key=C1lOpwRYYaDDmZP9INwKEVcErtMdnxG2ey7fwkGY",
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vSyuEpf7ovIFnpH63zdTQXrwFv8wr8joti08T-zs6JKM4LyPKtg5O-tNSTJBgIt54qWVpwZhr5niux_/pub?gid=1310654021&single=true&output=csv",
-  "http://localhost:8000/sheet.csv",
 ];
 const VC_CSV_URLS = [
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vSXpop2sh1CxlWlMug0G3In2zOMGHMO4VwHUGKhdY4vGvT8sxPwfYf_v1lyNvPGSJtzVAil_69P-LJJ/pub?gid=0&single=true&output=csv",
 ];
+const DATA_FUNCTION_URL = "/.netlify/functions/data-sources";
 
 // STEP 4: Set auto-refresh interval (milliseconds). Default: 3 minutes
 const REFRESH_INTERVAL = 180000;
@@ -373,26 +373,40 @@ async function fetchData() {
     TEAMS.forEach(t => { previousPoints[t.id] = calcPoints(t.id); });
     teamData = emptyTeamData();
 
-    const revenueRes = await fetchCsvTextFromSources(SHEET_CSV_URLS);
-    const revenueRows = parseCSV(revenueRes.text);
+    let revenueText = "";
+    let vcText = "";
+    let revenueSource = "";
+    let vcSource = "";
+
+    // Netlify production path: function reads env vars and fetches both CSVs server-side.
+    try {
+      const fnRes = await fetch(DATA_FUNCTION_URL + "?_t=" + Date.now());
+      if (!fnRes.ok) throw new Error("function fetch failed (" + fnRes.status + ")");
+      const payload = await fnRes.json();
+      revenueText = payload.revenueCsv || "";
+      vcText = payload.vcCsv || "";
+      revenueSource = (payload.sources && payload.sources.revenue) || "netlify-env";
+      vcSource = (payload.sources && payload.sources.vc) || "netlify-env";
+    } catch (e) {
+      // Local/dev fallback path: direct browser fetch of public CSV URLs.
+      const revenueRes = await fetchCsvTextFromSources(SHEET_CSV_URLS);
+      revenueText = revenueRes.text;
+      revenueSource = revenueRes.source;
+      const vcRes = await fetchCsvTextFromSources(VC_CSV_URLS);
+      vcText = vcRes.text;
+      vcSource = vcRes.source;
+    }
+
+    const revenueRows = parseCSV(revenueText);
     let revenueImported = processRevenueRows(revenueRows);
     if (revenueImported === 0 && hasWeeklySummaryShape(revenueRows)) {
       revenueImported = processWeeklyRows(revenueRows);
     }
 
-    let vcImported = 0;
-    let vcSource = "";
-    try {
-      const vcRes = await fetchCsvTextFromSources(VC_CSV_URLS);
-      vcSource = vcRes.source;
-      const vcRows = parseCSV(vcRes.text);
-      vcImported = processVCRows(vcRows);
-    } catch (e) {
-      vcImported = 0;
-      vcSource = "unavailable";
-    }
+    const vcRows = parseCSV(vcText);
+    const vcImported = processVCRows(vcRows);
 
-    dataWarning = `Revenue rows: ${revenueImported} · VC rows: ${vcImported} · Rev source: ${revenueRes.source} · VC source: ${vcSource || VC_CSV_URLS[0]}`;
+    dataWarning = `Revenue rows: ${revenueImported} · VC rows: ${vcImported} · Rev source: ${revenueSource} · VC source: ${vcSource}`;
     lastRefresh = new Date();
     render();
   } catch (e) {
