@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plutus Rivalry Week — Live Leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--fire:#FF6B35;--fire2:#E8363A;--gold:#F7C948;--bg:#08080f;--bg2:#0e0e1a;--bg3:rgba(255,255,255,0.03);--bg4:rgba(255,255,255,0.06);--border:rgba(255,255,255,0.06);--text:#e0e0e0;--muted:#888;--dim:#555}
+body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;min-height:100vh;overflow-x:hidden}
+.wrap{max-width:680px;margin:0 auto;padding:16px}
+
+/* Header */
+.hdr{text-align:center;padding:24px 0 20px}
+.live-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:4px 14px;border-radius:20px;background:linear-gradient(135deg,var(--fire),var(--fire2));color:#fff;margin-bottom:8px;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#fff;animation:blink 1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+h1{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:4px;background:linear-gradient(135deg,var(--fire),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+.subtitle{font-size:13px;color:var(--muted);margin-top:4px;letter-spacing:1px}
+.refresh-info{font-size:11px;color:var(--dim);margin-top:6px}
+.refresh-info span{color:var(--fire);font-weight:600}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}
+.tab{padding:8px 20px;border-radius:24px;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;border:none;cursor:pointer;transition:all .2s;background:var(--bg4);color:var(--muted)}
+.tab.active{background:linear-gradient(135deg,var(--fire),var(--fire2));color:#fff}
+.tab:hover{transform:scale(1.03)}
+
+/* Leaderboard */
+.board-card{margin-bottom:12px;border-radius:14px;padding:16px;position:relative;overflow:hidden;border:1px solid var(--border);background:var(--bg3);transition:transform .2s}
+.board-card:hover{transform:translateX(4px)}
+.board-card.top1{background:linear-gradient(135deg,rgba(255,107,53,.12),rgba(247,201,72,.06));border-color:rgba(255,107,53,.3)}
+.board-card.top2{border-color:rgba(192,192,192,.2)}
+.board-card.top3{border-color:rgba(205,127,50,.2)}
+.card-row{display:flex;align-items:center;gap:12px}
+.rank{font-family:'Bebas Neue',sans-serif;font-size:24px;width:32px;text-align:center;flex-shrink:0}
+.rank.r1{color:var(--fire)}
+.rank.r2{color:#C0C0C0}
+.rank.r3{color:#CD7F32}
+.rank.rn{color:var(--dim);font-size:18px}
+.avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#fff;flex-shrink:0;border:2px solid rgba(255,255,255,.1)}
+.card-info{flex:1;min-width:0}
+.card-name{font-weight:800;font-size:15px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-tag{font-size:11px;color:var(--muted)}
+.card-pts{text-align:right}
+.pts-num{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#fff;line-height:1}
+.top1 .pts-num{color:var(--fire)}
+.pts-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.bar-track{height:4px;border-radius:4px;background:var(--bg4);margin:10px 0 8px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .8s ease}
+.top1 .bar-fill{background:linear-gradient(90deg,var(--fire),var(--gold))}
+.top2 .bar-fill{background:linear-gradient(90deg,#888,#bbb)}
+.top3 .bar-fill{background:linear-gradient(90deg,#CD7F32,#daa520)}
+.bar-fill{background:linear-gradient(90deg,#444,#666)}
+.stats-row{display:flex;gap:16px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.stats-row strong{color:#fff;font-weight:700}
+.change{font-size:11px;font-weight:700;margin-left:4px}
+.change.up{color:#27AE60}
+.change.down{color:var(--fire2)}
+
+/* Matchups */
+.matchup-tabs{display:flex;gap:6px;justify-content:center;margin-bottom:16px;flex-wrap:wrap}
+.mtab{padding:6px 14px;border-radius:8px;font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;transition:all .2s}
+.mtab.active{background:rgba(255,107,53,.15);border-color:rgba(255,107,53,.3);color:var(--fire)}
+.matchup-arena{border-radius:16px;padding:24px 20px;background:var(--bg3);border:1px solid rgba(255,255,255,.08)}
+.arena-label{text-align:center;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:20px}
+.fighters{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.fighter{text-align:center;flex:1}
+.fighter-avatar{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:26px;color:#fff;margin:0 auto 8px;border:3px solid transparent;transition:border .3s}
+.fighter-avatar.winning{border-color:var(--fire);box-shadow:0 0 20px rgba(255,107,53,.3)}
+.fighter-name{font-weight:800;font-size:14px;color:#fff}
+.fighter-pts{font-family:'Bebas Neue',sans-serif;font-size:32px;margin-top:4px;color:var(--muted)}
+.fighter-pts.winning{color:var(--fire)}
+.vs-circle{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--fire),var(--fire2));display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#fff;flex-shrink:0}
+.metric-bar{margin-bottom:10px}
+.metric-labels{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.metric-labels .left{font-weight:700}
+.metric-labels .center{color:var(--dim);font-size:11px}
+.metric-labels .right{font-weight:700}
+.metric-labels .lead{color:var(--fire)}
+.metric-track{display:flex;height:6px;border-radius:6px;overflow:hidden;background:var(--bg4)}
+.metric-a,.metric-b{height:100%;transition:width .6s}
+
+/* Lone wolf */
+.lone-wolf{border-radius:16px;padding:20px;margin-top:16px;background:var(--bg3);border:1px dashed rgba(255,255,255,.1);text-align:center}
+.wolf-badge{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:3px;color:var(--gold);margin-bottom:8px}
+.wolf-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#F59E0B,#EAB308);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;margin:0 auto 8px;border:2px solid rgba(247,201,72,.3)}
+.wolf-name{font-weight:800;font-size:16px;color:#fff}
+.wolf-pts{font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--gold);margin:4px 0}
+.wolf-target{font-size:12px;color:var(--muted);line-height:1.6}
+.wolf-progress{margin-top:12px}
+.wolf-progress-label{font-size:11px;color:var(--muted);margin-bottom:4px;display:flex;justify-content:space-between}
+.wolf-bar{height:8px;border-radius:8px;background:var(--bg4);overflow:hidden}
+.wolf-bar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--gold),var(--fire));transition:width .8s}
+
+/* Day tracker */
+.day-strip{display:flex;gap:4px;margin:20px 0 8px;justify-content:center}
+.day-pill{padding:6px 10px;border-radius:8px;font-size:11px;font-weight:600;background:var(--bg4);color:var(--muted);text-align:center;flex:1;max-width:80px}
+.day-pill.today{background:rgba(255,107,53,.15);color:var(--fire);border:1px solid rgba(255,107,53,.3)}
+.day-pill.past{background:var(--bg3);color:var(--dim)}
+.day-pill.selected{background:linear-gradient(135deg,var(--fire),var(--fire2));color:#fff;border:1px solid rgba(255,107,53,.35)}
+.day-pill .day-num{font-family:'Bebas Neue',sans-serif;font-size:18px;display:block;line-height:1}
+
+/* Footer */
+.footer{text-align:center;padding:20px 0;font-size:11px;color:var(--dim);line-height:1.8}
+.footer .scoring{color:var(--muted);font-weight:600;margin-bottom:4px}
+
+/* Loading */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px}
+.spinner{width:40px;height:40px;border:3px solid var(--bg4);border-top-color:var(--fire);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:13px;color:var(--muted)}
+
+/* Error */
+.error-box{background:rgba(232,54,58,.1);border:1px solid rgba(232,54,58,.3);border-radius:12px;padding:20px;text-align:center;margin:20px 0}
+.error-box h3{color:var(--fire2);font-size:16px;margin-bottom:8px}
+.error-box p{font-size:13px;color:var(--muted);line-height:1.6}
+.error-box code{background:var(--bg4);padding:2px 8px;border-radius:4px;font-size:12px;color:var(--text)}
+
+/* Responsive */
+@media(max-width:480px){
+  h1{font-size:40px}
+  .fighter-avatar{width:56px;height:56px;font-size:20px}
+  .fighter-pts{font-size:26px}
+  .stats-row{gap:10px}
+  .pts-num{font-size:24px}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <div class="loading">
+    <div class="spinner"></div>
+    <div class="loading-text">Loading rivalry data...</div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIGURATION — UPDATE THESE VALUES
+// ============================================================
+// 
+// Revenue source CSVs (first success wins):
+// 1) Direct sheet/API CSV
+// 2) Local proxy fallback (if direct is blocked by CORS/network)
+const SHEET_CSV_URLS = [
+  "https://data.testbook.com/api/queries/18368/results.csv?api_key=C1lOpwRYYaDDmZP9INwKEVcErtMdnxG2ey7fwkGY",
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSyuEpf7ovIFnpH63zdTQXrwFv8wr8joti08T-zs6JKM4LyPKtg5O-tNSTJBgIt54qWVpwZhr5niux_/pub?gid=1310654021&single=true&output=csv",
+  "http://localhost:8000/sheet.csv",
+];
+const VC_CSV_URLS = [
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSXpop2sh1CxlWlMug0G3In2zOMGHMO4VwHUGKhdY4vGvT8sxPwfYf_v1lyNvPGSJtzVAil_69P-LJJ/pub?gid=0&single=true&output=csv",
+];
+
+// STEP 4: Set auto-refresh interval (milliseconds). Default: 3 minutes
+const REFRESH_INTERVAL = 180000;
+
+// ============================================================
+// TEAM DATA
+// ============================================================
+const TEAMS = [
+  { id:"anurag", name:"Team Anurag", tl:"Anurag Tripathi", initials:"AT", color:"#C0392B", gradient:"linear-gradient(135deg,#C0392B,#E74C3C)", rival:"sourav", tag:"Clash of titans" },
+  { id:"sourav", name:"Team Sourav", tl:"Sourav", initials:"SK", color:"#2C3E50", gradient:"linear-gradient(135deg,#2C3E50,#34495E)", rival:"anurag", tag:"Clash of titans" },
+  { id:"vikas", name:"Team Vikas", tl:"Vikas Pandey", initials:"VP", color:"#1a1a1a", gradient:"linear-gradient(135deg,#1a1a1a,#444)", rival:"yash", tag:"David vs Goliath" },
+  { id:"yash", name:"Team Yash", tl:"Yash Maheshwari", initials:"YM", color:"#8E44AD", gradient:"linear-gradient(135deg,#8E44AD,#9B59B6)", rival:"vikas", tag:"David vs Goliath" },
+  { id:"shiva", name:"Team Shiva", tl:"Shiva ATL", initials:"SA", color:"#2980B9", gradient:"linear-gradient(135deg,#2980B9,#3498DB)", rival:"vishal", tag:"VC showdown" },
+  { id:"vishal", name:"Team Vishal", tl:"Vishal", initials:"VK", color:"#16A085", gradient:"linear-gradient(135deg,#16A085,#1ABC9C)", rival:"shiva", tag:"VC showdown" },
+  { id:"salil", name:"Team Salil", tl:"Salil", initials:"SS", color:"#D35400", gradient:"linear-gradient(135deg,#D35400,#E67E22)", rival:"suraj", tag:"Redemption match" },
+  { id:"suraj", name:"Team Suraj", tl:"Suraj", initials:"SJ", color:"#27AE60", gradient:"linear-gradient(135deg,#27AE60,#2ECC71)", rival:"salil", tag:"Redemption match" },
+  { id:"sumit", name:"Team Sumit", tl:"Sumit Kumar", initials:"SK", color:"#F39C12", gradient:"linear-gradient(135deg,#F59E0B,#EAB308)", rival:null, tag:"Lone wolf" },
+];
+
+const MATCHUPS = [
+  { a:"anurag", b:"sourav", label:"Clash of titans" },
+  { a:"vikas", b:"yash", label:"David vs Goliath" },
+  { a:"shiva", b:"vishal", label:"VC showdown" },
+  { a:"salil", b:"suraj", label:"Redemption match" },
+];
+
+const DAYS = ["2026-04-24","2026-04-25","2026-04-26","2026-04-27","2026-04-28","2026-04-29","2026-04-30"];
+const DAY_LABELS = ["Apr 24","Apr 25","Apr 26","Apr 27","Apr 28","Apr 29","Apr 30"];
+const WEEK4_START = "2026-04-24";
+const WEEK4_END = "2026-04-30";
+
+let currentView = "leaderboard";
+let currentMatchup = 0;
+let teamData = {};
+let lastRefresh = null;
+let previousPoints = {};
+let dataWarning = "";
+let selectedDayIndex = -1; // -1 = overall total, 0..6 = day-wise
+
+const TEAM_ALIASES = {
+  "team anurag tripathi (select)": "anurag",
+  "team anurag tripathi": "anurag",
+  "anurag tripathi": "anurag",
+  "team anurag": "anurag",
+  "anurag": "anurag",
+  "team sourav (super bda)": "sourav",
+  "team sourav": "sourav",
+  "sourav": "sourav",
+  "team vikas pandey (select)": "vikas",
+  "team vikas pandey": "vikas",
+  "vikas pandey": "vikas",
+  "team vikas": "vikas",
+  "vikas": "vikas",
+  "team yash maheshwari (select)": "yash",
+  "team yash maheshwari": "yash",
+  "yash maheshwari": "yash",
+  "team yash": "yash",
+  "yash": "yash",
+  "team shiva atl (select)": "shiva",
+  "team shiva atl": "shiva",
+  "shiva atl": "shiva",
+  "team shiva": "shiva",
+  "shiva": "shiva",
+  "team vishal (select)": "vishal",
+  "team vishal": "vishal",
+  "vishal": "vishal",
+  "team salil (select)": "salil",
+  "team salil": "salil",
+  "salil": "salil",
+  "team suraj (super bda)": "suraj",
+  "team suraj": "suraj",
+  "suraj": "suraj",
+  "team sumit kumar (select)": "sumit",
+  "team sumit kumar": "sumit",
+  "sumit kumar": "sumit",
+  "team sumit": "sumit",
+  "sumit": "sumit",
+};
+
+// Reserved for upcoming VC point logic:
+// Maps BDA email -> canonical team id.
+const BDA_TEAM_MAP = {
+  "shantanu.singh@plutuseducation.com": "salil",
+  "umakant.saroj@plutuseducation.com": "anurag",
+  "soumya.pandey@plutuseducation.com": "suraj",
+  "shubham.singh.bd@plutuseducation.com": "sourav",
+  "ritu.yadav@plutuseducation.com": "anurag",
+  "prince.singh@plutuseducation.com": "anurag",
+  "sourav.super@plutuseducation.com": "sourav",
+  "jagannath.behera@plutuseducation.com": "shiva",
+  "shaurya.kumar@plutuseducation.com": "shiva",
+  "shubham.thakur@plutuseducation.com": "vishal",
+  "prince.kumar.bd@plutuseducation.com": "shiva",
+  "sachin.rathi@plutuseducation.com": "sourav",
+  "ayushi.singh.bd1@plutuseducation.com": "anurag",
+  "kajal.agrawal.bd@plutuseducation.com": "suraj",
+  "vedansh.srivastava@plutuseducation.com": "vishal",
+  "anil.bhati@plutuseducation.com": "salil",
+  "nishant.chaturvedi@plutuseducation.com": "vishal",
+  "ankur.tomar.bd@plutuseducation.com": "sourav",
+  "manjesh.sharma@plutuseducation.com": "salil",
+  "deeksha.pandey.bd@plutuseducation.com": "sourav",
+  "pinky.prasad@plutuseducation.com": "salil",
+  "arpit.malik@plutuseducation.com": "vishal",
+  "sahu.patel@plutuseducation.com": "salil",
+  "sonali.lenka@plutuseducation.com": "suraj",
+  "akshay.gupta@plutuseducation.com": "vishal",
+  "deepak.mishra.bd@testbook.com": "sourav",
+  "pradeep.rai@plutuseducation.com": "shiva",
+  "jagdishwar.reddy@plutuseducation.com": "suraj",
+  "abhishek.yadav.bd@plutuseducation.com": "salil",
+  "ishika.sharma.bd@plutuseducation.com": "vishal",
+  "anushka.singh.bd@plutuseducation.com": "shiva",
+  "ankit.kumar.bd@plutuseducation.com": "shiva",
+  "abhishek.vats@plutuseducation.com": "anurag",
+  "pranay.kaushal@plutuseducation.com": "yash",
+  "om.rai@plutuseducation.com": "suraj",
+  "sakshi.pathak.bd@plutuseducation.com": "yash",
+  "firoz.ahmad.bd@plutuseducation.com": "vikas",
+  "anurag.gosain.bd@plutuseducation.com": "yash",
+  "mayur.ahuja.bd@plutuseducation.com": "vikas",
+  "priya.bharti.bd@plutuseducation.com": "anurag",
+  "shubham.parashar.bd@plutuseducation.com": "vikas",
+  "sheikh.amaan.bd@plutuseducation.com": "sumit",
+  "alok.kumar.bd@plutuseducation.com": "sumit",
+  "utkarsh.dubey.bd@plutuseducation.com": "sumit",
+};
+
+function normalizeText(v) {
+  return String(v || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function parseNumber(v) {
+  const n = parseFloat(String(v || "").replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function parseToIsoDate(v) {
+  const s = String(v || "").trim();
+  if (!s) return "";
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (slash) {
+    const mm = String(parseInt(slash[1], 10)).padStart(2, "0");
+    const dd = String(parseInt(slash[2], 10)).padStart(2, "0");
+    return `${slash[3]}-${mm}-${dd}`;
+  }
+  return "";
+}
+
+function resolveTeamId(rawTeam) {
+  const key = normalizeText(rawTeam);
+  if (!key) return "";
+  if (TEAM_ALIASES[key]) return TEAM_ALIASES[key];
+  for (const alias in TEAM_ALIASES) {
+    if (key.includes(alias)) return TEAM_ALIASES[alias];
+  }
+  return "";
+}
+
+function emptyTeamData() {
+  const data = {};
+  TEAMS.forEach(t => {
+    data[t.id] = {};
+    DAYS.forEach(d => { data[t.id][d] = { revenue:0, vcDone:0 }; });
+  });
+  return data;
+}
+
+async function fetchCsvTextFromSources(urls) {
+  let lastError = null;
+  for (const url of urls) {
+    try {
+      const sep = url.includes("?") ? "&" : "?";
+      const res = await fetch(url + sep + "_t=" + Date.now());
+      if (!res.ok) throw new Error("Fetch failed (" + res.status + ")");
+      return { text: await res.text(), source: url };
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError || new Error("No CSV source available");
+}
+
+// ============================================================
+// DATA FETCHING
+// ============================================================
+function parseCSV(text) {
+  const lines = text.trim().split("\n");
+  if (lines.length < 2) return [];
+  const rawHeaders = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/\s+/g,"_"));
+  const seen = {};
+  const headers = rawHeaders.map(h => {
+    const key = h || "col";
+    seen[key] = (seen[key] || 0) + 1;
+    return seen[key] === 1 ? key : `${key}_${seen[key]}`;
+  });
+  return lines.slice(1).map(line => {
+    const vals = line.split(",").map(v => v.trim());
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = vals[i] || "");
+    return obj;
+  });
+}
+
+function hasWeeklySummaryShape(rows) {
+  if (!rows || rows.length === 0) return false;
+  const sample = rows[0] || {};
+  const keys = Object.keys(sample);
+  return keys.includes("team") && (keys.includes("w4_actual") || keys.includes("mtd"));
+}
+
+async function fetchData() {
+  try {
+    TEAMS.forEach(t => { previousPoints[t.id] = calcPoints(t.id); });
+    teamData = emptyTeamData();
+
+    const revenueRes = await fetchCsvTextFromSources(SHEET_CSV_URLS);
+    const revenueRows = parseCSV(revenueRes.text);
+    let revenueImported = processRevenueRows(revenueRows);
+    if (revenueImported === 0 && hasWeeklySummaryShape(revenueRows)) {
+      revenueImported = processWeeklyRows(revenueRows);
+    }
+
+    let vcImported = 0;
+    let vcSource = "";
+    try {
+      const vcRes = await fetchCsvTextFromSources(VC_CSV_URLS);
+      vcSource = vcRes.source;
+      const vcRows = parseCSV(vcRes.text);
+      vcImported = processVCRows(vcRows);
+    } catch (e) {
+      vcImported = 0;
+      vcSource = "unavailable";
+    }
+
+    dataWarning = `Revenue rows: ${revenueImported} · VC rows: ${vcImported} · Rev source: ${revenueRes.source} · VC source: ${vcSource || VC_CSV_URLS[0]}`;
+    lastRefresh = new Date();
+    render();
+  } catch (e) {
+    console.error("Fetch error:", e);
+    dataWarning = "Could not fetch revenue CSV.";
+    if (Object.keys(teamData).length === 0) useDemoData();
+    render();
+  }
+}
+
+function processRevenueRows(rows) {
+  let importedCount = 0;
+  rows.forEach(row => {
+    const teamId = resolveTeamId(row.team || row.Team);
+    const day = parseToIsoDate(row.txnon || row.TxnOn || row.txn_on || row.date || row.day);
+    if (!teamData[teamId] || !teamData[teamId][day]) return;
+    if (day < WEEK4_START || day > WEEK4_END) return;
+    const revenue = parseNumber(row.totalamount || row.totalAmount || row.paidamount || row.PaidAmount);
+    if (revenue <= 0) return;
+    teamData[teamId][day].revenue += Math.round(revenue);
+    importedCount += 1;
+  });
+  return importedCount;
+}
+
+function processWeeklyRows(rows) {
+  let importedCount = 0;
+  rows.forEach(row => {
+    const teamId = resolveTeamId(row.team || row.Team);
+    if (!teamId) return;
+    const revenue = parseNumber(row.w4_actual || row.mtd || row.totalamount || row.totalAmount);
+    if (revenue <= 0) return;
+    // Weekly summary has aggregate amount; place on W4 start for scoring.
+    teamData[teamId][WEEK4_START].revenue += Math.round(revenue);
+    importedCount += 1;
+  });
+  return importedCount;
+}
+
+function processVCRows(rows) {
+  let importedCount = 0;
+  rows.forEach(row => {
+    const rawEmail = (row.bda_mail || row.agent_email || row.Agent_Email || row.agentemail || "").toLowerCase().trim();
+    const teamId = BDA_TEAM_MAP[rawEmail] || "";
+    if (!teamId || !teamData[teamId]) return;
+    const day = parseToIsoDate(
+      row.meeting_date1 ||
+      row.meeting_date ||
+      row.meeting_date_2 ||
+      row.meeting_date_3 ||
+      row.date ||
+      ""
+    );
+    if (!day || !teamData[teamId][day]) return;
+    if (day < WEEK4_START || day > WEEK4_END) return;
+    teamData[teamId][day].vcDone += 1;
+    importedCount += 1;
+  });
+  return importedCount;
+}
+
+function useDemoData() {
+  teamData = emptyTeamData();
+  lastRefresh = new Date();
+}
+
+// ============================================================
+// CALCULATIONS
+// ============================================================
+function calcPoints(tid) {
+  if (!teamData[tid]) return 0;
+  const activeDays = selectedDayIndex === -1 ? DAYS : [DAYS[selectedDayIndex]];
+  let pts = 0;
+  activeDays.forEach(d => {
+    const v = teamData[tid][d];
+    if (!v) return;
+    pts += (v.revenue / 100000) * 20;
+    pts += v.vcDone * 10;
+  });
+  return Math.round(pts);
+}
+
+function sumMetric(tid, metric) {
+  if (!teamData[tid]) return 0;
+  const activeDays = selectedDayIndex === -1 ? DAYS : [DAYS[selectedDayIndex]];
+  return activeDays.reduce((s, d) => s + (teamData[tid][d]?.[metric] || 0), 0);
+}
+
+function formatRev(v) {
+  if (v >= 100000) return "₹" + (v/100000).toFixed(1) + "L";
+  if (v >= 1000) return "₹" + Math.round(v/1000) + "K";
+  return "₹" + v;
+}
+
+function getRanked() {
+  return TEAMS.map(t => ({
+    ...t,
+    points: calcPoints(t.id),
+    revenue: sumMetric(t.id, "revenue"),
+    vc: sumMetric(t.id, "vcDone"),
+    prevPoints: previousPoints[t.id] || 0,
+  })).sort((a, b) => b.points - a.points);
+}
+
+function getTodayIdx() {
+  const now = new Date();
+  const d = now.getDate();
+  if (d >= 24 && d <= 30) return d - 24;
+  return 0;
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+function render() {
+  const app = document.getElementById("app");
+  const ranked = getRanked();
+  const maxPts = Math.max(...ranked.map(r => r.points), 1);
+  const todayIdx = getTodayIdx();
+  const activeLabel = selectedDayIndex === -1 ? "Overall total (Apr 24-30)" : ("Day view: " + DAY_LABELS[selectedDayIndex]);
+
+  let html = `
+    <div class="hdr">
+      <div class="live-badge"><div class="live-dot"></div> LIVE</div>
+      <h1>RIVALRY WEEK</h1>
+      <div class="subtitle">April 24 — 30, 2026 &nbsp;|&nbsp; Plutus Sales Floor</div>
+      <div class="refresh-info">${lastRefresh ? 'Last updated: <span>' + lastRefresh.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}) + '</span> · ' + activeLabel + ' · Auto-refreshes every 3 min' : 'Connecting...'}</div>
+    </div>
+
+    <div class="day-strip">
+      ${DAY_LABELS.map((dl, i) => `<button class="day-pill ${selectedDayIndex===i ? 'selected' : ''} ${i === todayIdx ? 'today' : i < todayIdx ? 'past' : ''}" onclick="switchDay(${i})"><div class="day-num">${dl.split(" ")[1]}</div>${i === todayIdx ? 'Today' : dl.split(" ")[0]}</button>`).join("")}
+      <button class="day-pill ${selectedDayIndex===-1 ? 'selected' : ''}" onclick="switchDay(-1)"><div class="day-num">Σ</div>Overall</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab ${currentView==='leaderboard'?'active':''}" onclick="switchView('leaderboard')">Leaderboard</button>
+      <button class="tab ${currentView==='matchups'?'active':''}" onclick="switchView('matchups')">Matchups</button>
+    </div>
+  `;
+
+  if (currentView === "leaderboard") {
+    html += renderLeaderboard(ranked, maxPts);
+  } else {
+    html += renderMatchups(ranked);
+  }
+
+  html += `
+    <div class="footer">
+      <div class="scoring">Scoring: 20 pts / ₹1L revenue · 10 pts / VC done</div>
+      Plutus Sales Floor © 2026
+    </div>
+  `;
+  if (dataWarning) {
+    html += `
+      <div class="error-box">
+        <h3>Data warning</h3>
+        <p>${dataWarning}</p>
+      </div>
+    `;
+  }
+
+  app.innerHTML = html;
+}
+
+function renderLeaderboard(ranked, maxPts) {
+  let html = "";
+  ranked.forEach((team, idx) => {
+    const barW = maxPts > 0 ? (team.points / maxPts) * 100 : 0;
+    const cls = idx === 0 ? "top1" : idx === 1 ? "top2" : idx === 2 ? "top3" : "";
+    const rankCls = idx === 0 ? "r1" : idx === 1 ? "r2" : idx === 2 ? "r3" : "rn";
+    const medals = ["🥇","🥈","🥉"];
+    const rankText = idx < 3 ? medals[idx] : "#" + (idx + 1);
+    const delta = team.points - team.prevPoints;
+    const deltaHtml = delta > 0 ? `<span class="change up">+${delta}</span>` : delta < 0 ? `<span class="change down">${delta}</span>` : "";
+    const rival = team.rival ? TEAMS.find(t => t.id === team.rival) : null;
+    const tagText = team.tag === "Lone wolf" ? "🐺 Solo warrior" : rival ? `vs ${rival.name}` : "";
+
+    html += `
+      <div class="board-card ${cls}">
+        <div class="card-row">
+          <div class="rank ${rankCls}">${rankText}</div>
+          <div class="avatar" style="background:${team.gradient}">${team.initials}</div>
+          <div class="card-info">
+            <div class="card-name">${team.name}</div>
+            <div class="card-tag">${tagText}</div>
+          </div>
+          <div class="card-pts">
+            <div class="pts-num">${team.points}${deltaHtml}</div>
+            <div class="pts-label">Points</div>
+          </div>
+        </div>
+        <div class="bar-track"><div class="bar-fill" style="width:${barW}%"></div></div>
+        <div class="stats-row">
+          <span><strong>${formatRev(team.revenue)}</strong> revenue</span>
+          <span><strong>${team.vc}</strong> VCs</span>
+        </div>
+      </div>
+    `;
+  });
+  return html;
+}
+
+function renderMatchups(ranked) {
+  let html = `<div class="matchup-tabs">`;
+  MATCHUPS.forEach((m, i) => {
+    html += `<button class="mtab ${currentMatchup===i?'active':''}" onclick="switchMatchup(${i})">${m.label}</button>`;
+  });
+  html += `</div>`;
+
+  const m = MATCHUPS[currentMatchup];
+  const tA = ranked.find(t => t.id === m.a);
+  const tB = ranked.find(t => t.id === m.b);
+
+  if (tA && tB) {
+    const aWin = tA.points > tB.points;
+    const bWin = tB.points > tA.points;
+
+    html += `
+      <div class="matchup-arena">
+        <div class="arena-label">${m.label}</div>
+        <div class="fighters">
+          <div class="fighter">
+            <div class="fighter-avatar ${aWin?'winning':''}" style="background:${tA.gradient}">${tA.initials}</div>
+            <div class="fighter-name">${tA.name}</div>
+            <div class="fighter-pts ${aWin?'winning':''}">${tA.points}</div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">points</div>
+          </div>
+          <div class="vs-circle">VS</div>
+          <div class="fighter">
+            <div class="fighter-avatar ${bWin?'winning':''}" style="background:${tB.gradient}">${tB.initials}</div>
+            <div class="fighter-name">${tB.name}</div>
+            <div class="fighter-pts ${bWin?'winning':''}">${tB.points}</div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">points</div>
+          </div>
+        </div>
+    `;
+
+    const metrics = [
+      { label:"Revenue", a:tA.revenue, b:tB.revenue, fmt:true },
+      { label:"VCs done", a:tA.vc, b:tB.vc },
+    ];
+
+    metrics.forEach(row => {
+      const total = Math.max(row.a + row.b, 1);
+      const aPct = (row.a / total) * 100;
+      const aVal = row.fmt ? formatRev(row.a) : row.a;
+      const bVal = row.fmt ? formatRev(row.b) : row.b;
+      html += `
+        <div class="metric-bar">
+          <div class="metric-labels">
+            <span class="left ${row.a>=row.b?'lead':''}">${aVal}</span>
+            <span class="center">${row.label}</span>
+            <span class="right ${row.b>row.a?'lead':''}">${bVal}</span>
+          </div>
+          <div class="metric-track">
+            <div class="metric-a" style="width:${aPct}%;background:${row.a>=row.b?'linear-gradient(90deg,var(--fire),var(--gold))':'rgba(255,255,255,0.1)'}"></div>
+            <div class="metric-b" style="flex:1;background:${row.b>row.a?'linear-gradient(90deg,var(--gold),var(--fire))':'rgba(255,255,255,0.1)'}"></div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+  }
+
+  // Lone Wolf section
+  const sumit = ranked.find(t => t.id === "sumit");
+  if (sumit) {
+    const vcTarget = 20;
+    const progress = Math.min((sumit.vc / Math.max(vcTarget, 1)) * 100, 100);
+    html += `
+      <div class="lone-wolf">
+        <div class="wolf-badge">🐺 THE LONE WOLF 🐺</div>
+        <div class="wolf-avatar">${sumit.initials}</div>
+        <div class="wolf-name">Team Sumit</div>
+        <div class="wolf-pts">${sumit.points} pts</div>
+        <div class="wolf-target">
+          Focus metrics this week: Revenue + VC done only<br>
+          This week: <strong style="color:${sumit.vc >= vcTarget ? '#27AE60' : 'var(--fire)'}">${sumit.vc} VCs</strong> · ${formatRev(sumit.revenue)} revenue
+        </div>
+        <div class="wolf-progress">
+          <div class="wolf-progress-label">
+            <span>Progress to ${vcTarget} VCs</span>
+            <span>${sumit.vc}/${vcTarget}</span>
+          </div>
+          <div class="wolf-bar"><div class="wolf-bar-fill" style="width:${progress}%"></div></div>
+        </div>
+      </div>
+    `;
+  }
+
+  return html;
+}
+
+// ============================================================
+// INTERACTIONS
+// ============================================================
+function switchView(v) {
+  currentView = v;
+  render();
+}
+
+function switchMatchup(i) {
+  currentMatchup = i;
+  render();
+}
+
+function switchDay(i) {
+  selectedDayIndex = i;
+  render();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+fetchData();
+setInterval(fetchData, REFRESH_INTERVAL);
+</script>
+</body>
+</html>
